@@ -18,6 +18,7 @@ pub struct Node {
     pub log_index: u64,
     pub role: NodeRole,
     pub failed: bool,
+    pub health_score: f64,
 }
 
 impl Node {
@@ -45,6 +46,14 @@ impl Node {
         self.memory_usage = (self.memory_usage + rng.gen_range(-0.05..0.05)).clamp(0.0, 1.0);
 
         self.latency_ms = (self.latency_ms + rng.gen_range(-2.0..2.0)).max(1.0);
+
+        self.health_score = (self.health_score + rng.gen_range(-0.03..0.03)).clamp(0.0, 1.0);
+
+        if self.health_score < 0.10 {
+            self.failed = true;
+        } else if self.health_score > 0.30 {
+            self.failed = false;
+        }
     }
 
     pub fn execute(&mut self, request: &Request) -> ExecutionResult {

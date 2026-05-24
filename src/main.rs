@@ -1,4 +1,5 @@
 mod cluster;
+mod benchmark;
 mod metrics;
 mod routing;
 mod simulation;
@@ -8,12 +9,15 @@ use cluster::{
     state::ClusterState,
 };
 
+use routing::cara::CaraRouter;
 use simulation::engine::SimulationEngine;
+use crate::metrics::collector::MetricsCollector;
 
 use routing::{
     leader_only::LeaderOnlyRouter, least_loaded::LeastLoadedRouter, random::RandomRouter,
     round_robin::RoundRobinRouter, router::Router,
 };
+use benchmark::runner::benchmark_sweep;
 
 fn main() {
     let cluster = ClusterState {
@@ -27,6 +31,7 @@ fn main() {
                 log_index: 100,
                 role: NodeRole::Leader,
                 failed: false,
+                health_score: 1.0,
             },
             Node {
                 id: 2,
@@ -37,6 +42,7 @@ fn main() {
                 log_index: 98,
                 role: NodeRole::Follower,
                 failed: false,
+                health_score: 1.0,
             },
         ],
     };
@@ -49,6 +55,7 @@ fn main() {
     let mut rr = RoundRobinRouter::new();
     let mut least = LeastLoadedRouter;
     let mut leader = LeaderOnlyRouter;
+    let mut cara = CaraRouter::new();
 
     println!("Random: {:?}", random.route(&request, &sim.cluster));
 
@@ -58,11 +65,8 @@ fn main() {
 
     println!("Leader Only: {:?}", leader.route(&request, &sim.cluster));
 
-    sim.tick();
+    // Run full benchmark sweep and generate final report (CSV + PNGs)
+    benchmark_sweep("benchmark_output");
 
-    println!("Average Latency: {:.2}", sim.metrics.average_latency());
-
-    println!("P95 Latency: {:.2}", sim.metrics.p95_latency());
-
-    println!("P99 Latency: {:.2}", sim.metrics.p99_latency());
+    println!("Benchmark sweep complete. Output written to ./cara/benchmark_output/");
 }
