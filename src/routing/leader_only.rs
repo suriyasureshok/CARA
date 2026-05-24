@@ -10,7 +10,7 @@ impl Router for LeaderOnlyRouter {
         cluster
             .nodes
             .iter()
-            .find(|node| !node.failed && matches!(node.role, NodeRole::Leader))
+            .find(|node| node.is_available() && matches!(node.role, NodeRole::Leader))
             .map(|node| RoutingDecision {
                 node_id: node.id,
                 score: 0.0,

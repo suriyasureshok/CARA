@@ -15,7 +15,7 @@ impl RoundRobinRouter {
 
 impl Router for RoundRobinRouter {
     fn route(&mut self, _request: &Request, cluster: &ClusterState) -> Option<RoutingDecision> {
-        let available: Vec<_> = cluster.nodes.iter().filter(|n| !n.failed).collect();
+        let available: Vec<_> = cluster.nodes.iter().filter(|n| n.is_available()).collect();
 
         if available.is_empty() {
             return None;

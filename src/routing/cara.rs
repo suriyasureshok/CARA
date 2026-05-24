@@ -89,6 +89,8 @@ struct Weights {
 
     freshness: f64,
 
+    memory: f64,
+
     role: f64,
     health: f64,
 }
@@ -103,6 +105,8 @@ fn adaptive_weights(req: &RequestVector) -> Weights {
 
         freshness: 0.1 + req.consistency_weight * 0.5,
 
+        memory: 0.15 + req.compute * 0.2,
+
         role: 0.1 + req.consistency_weight * 0.3,
 
         health: 0.30,
@@ -116,6 +120,7 @@ fn distance(node: &NodeVector, weights: &Weights) -> f64 {
         + weights.queue * node.queue
         + weights.latency * node.latency
         + weights.freshness * (1.0 - node.freshness)
+        + weights.memory * node.memory
         + weights.role * role_penalty
         + weights.health * (1.0 - node.health)
 }

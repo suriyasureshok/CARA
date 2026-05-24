@@ -10,7 +10,7 @@ impl Router for LeastLoadedRouter {
         cluster
             .nodes
             .iter()
-            .filter(|n| !n.failed)
+            .filter(|n| n.is_available())
             .min_by_key(|n| n.queue_length)
             .map(|node| RoutingDecision {
                 node_id: node.id,

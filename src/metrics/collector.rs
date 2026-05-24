@@ -1,5 +1,11 @@
+//! Metrics collection for latency, throughput, balance, reliability, and routing cost.
+//!
+//! The collector stores raw samples and exposes convenience methods used by the
+//! benchmark sweep and final report generation.
+
 use crate::cluster::execution::ExecutionResult;
 
+/// Aggregated metrics gathered from benchmark runs.
 #[derive(Debug)]
 pub struct MetricsCollector {
     pub latencies: Vec<f64>,
@@ -18,6 +24,7 @@ pub struct MetricsCollector {
 }
 
 impl MetricsCollector {
+    /// Create a fresh metrics collector.
     pub fn new() -> Self {
         Self {
             latencies: Vec::new(),
@@ -36,7 +43,11 @@ impl MetricsCollector {
         }
     }
 
+    /// Record a completed request execution.
     pub fn record(&mut self, result: &ExecutionResult) {
+        let _ = result.request_id;
+        let _ = result.node_id;
+
         self.latencies.push(result.latency_ms);
 
         self.total_requests += 1;
@@ -50,10 +61,12 @@ impl MetricsCollector {
         }
     }
 
+    /// Record routing latency in nanoseconds.
     pub fn record_routing_ns(&mut self, ns: u128) {
         self.routing_latencies_ns.push(ns);
     }
 
+    /// Compute the average end-to-end request latency.
     pub fn average_latency(&self) -> f64 {
         if self.latencies.is_empty() {
             return 0.0;
@@ -62,6 +75,7 @@ impl MetricsCollector {
         self.latencies.iter().sum::<f64>() / self.latencies.len() as f64
     }
 
+    /// Compute the p95 latency from the recorded samples.
     pub fn p95_latency(&self) -> f64 {
         if self.latencies.is_empty() {
             return 0.0;
@@ -76,6 +90,7 @@ impl MetricsCollector {
         values[idx.min(values.len() - 1)]
     }
 
+    /// Compute the p99 latency from the recorded samples.
     pub fn p99_latency(&self) -> f64 {
         if self.latencies.is_empty() {
             return 0.0;
@@ -90,6 +105,7 @@ impl MetricsCollector {
         values[idx.min(values.len() - 1)]
     }
 
+    /// Compute requests per tick.
     pub fn throughput(&self, ticks: u64) -> f64 {
         if ticks == 0 {
             return 0.0;
@@ -98,6 +114,7 @@ impl MetricsCollector {
         self.total_requests as f64 / ticks as f64
     }
 
+    /// Compute the standard deviation of queue lengths.
     pub fn queue_std_dev(queues: &[usize]) -> f64 {
         if queues.is_empty() {
             return 0.0;
@@ -117,6 +134,7 @@ impl MetricsCollector {
         variance.sqrt()
     }
 
+    /// Compute the stale response rate.
     pub fn stale_rate(&self) -> f64 {
         if self.total_requests == 0 {
             return 0.0;
@@ -125,6 +143,7 @@ impl MetricsCollector {
         self.stale_responses as f64 / self.total_requests as f64
     }
 
+    /// Compute average routing latency in nanoseconds.
     pub fn avg_routing_ns(&self) -> f64 {
         if self.routing_latencies_ns.is_empty() {
             return 0.0;
@@ -133,6 +152,7 @@ impl MetricsCollector {
         self.routing_latencies_ns.iter().sum::<u128>() as f64 / self.routing_latencies_ns.len() as f64
     }
 
+    /// Compute the proportion of requests that avoided failures.
     pub fn failure_avoidance_rate(&self) -> f64 {
         if self.total_requests == 0 {
             return 0.0;

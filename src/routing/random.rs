@@ -14,7 +14,7 @@ impl Router for RandomRouter {
         cluster
             .nodes
             .iter()
-            .filter(|n| !n.failed)
+            .filter(|n| n.is_available())
             .collect::<Vec<_>>()
             .choose(&mut rng)
             .map(|node| RoutingDecision {

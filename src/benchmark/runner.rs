@@ -1,3 +1,9 @@
+//! Benchmark harness for comparing all routing algorithms under identical workloads.
+//!
+//! The harness produces CSV data and PNG plots so the final report can compare
+//! latency, throughput, stale response rate, routing cost, queue balance, and
+//! ranking across router implementations.
+
 use crate::cluster::{
     node::{Node, NodeRole},
     state::ClusterState,
@@ -17,6 +23,7 @@ use std::path::Path;
 
 use plotters::prelude::*;
 
+/// Available router implementations that participate in the benchmark sweep.
 #[derive(Debug, Clone, Copy)]
 pub enum RouterKind {
     Random,
@@ -26,6 +33,7 @@ pub enum RouterKind {
     Cara,
 }
 
+/// A single benchmark outcome for one router, one workload size, and one cluster size.
 #[derive(Clone)]
 pub struct BenchmarkResult {
     pub avg_latency: f64,
@@ -68,6 +76,7 @@ fn create_router(kind: RouterKind) -> Box<dyn Router> {
     }
 }
 
+/// Run one benchmark case for a single router, request count, and node count.
 pub fn benchmark(kind: RouterKind, requests: usize, node_count: usize) -> BenchmarkResult {
     let mut cluster = fresh_cluster(node_count);
 
@@ -93,6 +102,8 @@ pub fn benchmark(kind: RouterKind, requests: usize, node_count: usize) -> Benchm
         metrics.record_routing_ns(routing_ns);
 
         if let Some(decision) = decision {
+            let _selected_score = decision.score;
+
             if let Some(node) = cluster.nodes.iter_mut().find(|n| n.id == decision.node_id) {
                 let freshness = node.freshness(leader_log);
 
@@ -133,34 +144,9 @@ pub fn benchmark(kind: RouterKind, requests: usize, node_count: usize) -> Benchm
     }
 }
 
-pub fn benchmark_all(requests: usize, node_count: usize) {
-    let kinds = vec![
-        RouterKind::Random,
-        RouterKind::RoundRobin,
-        RouterKind::LeastLoaded,
-        RouterKind::LeaderOnly,
-        RouterKind::Cara,
-    ];
-
-    for kind in kinds {
-        let name = match &kind {
-            RouterKind::Random => "Random",
-            RouterKind::RoundRobin => "RoundRobin",
-            RouterKind::LeastLoaded => "LeastLoaded",
-            RouterKind::LeaderOnly => "LeaderOnly",
-            RouterKind::Cara => "CARA",
-        };
-
-        println!("Running benchmark for {}...", name);
-
-        let res = benchmark(kind, requests, node_count);
-
-        println!("{}\n------\nAvg Latency: {:.2}\nP95: {:.2}\nP99: {:.2}\nThroughput: {:.2}\nStale Rate: {:.4}\nRouting ns avg: {:.2}\nQueue StdDev: {:.2}\nFailure Avoidance: {:.4}\n", name, res.avg_latency, res.p95, res.p99, res.throughput, res.stale_rate, res.routing_ns, res.queue_std_dev, res.failure_avoidance);
-    }
-}
-
-/// Run a sweep across node counts (4..=20) and request sizes (1k..=10k) and
-/// write CSV results and generate plots. Produces a ranking summary as CSV and PNG.
+/// Run the full report sweep across node counts (4..=20) and request sizes (1k..=10k).
+///
+/// The function writes CSV results and generates PNG plots in the chosen output directory.
 pub fn benchmark_sweep(out_dir: &str) {
     let node_counts: Vec<usize> = (4..=20).collect();
     let request_sizes: Vec<usize> = (1..=10).map(|i| i * 1000).collect();
@@ -286,7 +272,7 @@ pub fn benchmark_sweep(out_dir: &str) {
     chart.configure_mesh().x_labels(ranking.len()).disable_mesh().draw().unwrap();
 
     chart
-        .draw_series(ranking.iter().enumerate().map(|(i, (name, avg))| {
+        .draw_series(ranking.iter().enumerate().map(|(i, (_name, avg))| {
             let x0 = i;
             let x1 = i + 1;
             let bar = Rectangle::new([(x0, 0.0), (x1, *avg)], BLUE.filled());

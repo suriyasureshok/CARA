@@ -65,7 +65,9 @@ impl Node {
 
         let request_penalty = request.compute_need * 25.0;
 
-        let latency = self.latency_ms + queue_penalty + cpu_penalty + request_penalty;
+        let size_penalty = request.size * 8.0;
+
+        let latency = self.latency_ms + queue_penalty + cpu_penalty + request_penalty + size_penalty;
 
         self.queue_length -= 1;
 
